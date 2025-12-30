@@ -2,7 +2,7 @@ import os
 import base64
 import logging
 import asyncio
-from typing import List, Dict, Any
+from typing import Any
 from email.mime.text import MIMEText
 
 from google.auth.transport.requests import Request
@@ -11,7 +11,10 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from google.auth.exceptions import RefreshError
-from mcp.server.fastmcp import FastMCP
+
+from mcp.server import Server
+from mcp.types import Tool, TextContent
+import mcp.server.stdio
 
 # Configure logging to stderr
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -23,11 +26,11 @@ SCOPES = [
     "https://www.googleapis.com/auth/gmail.compose"
 ]
 
-# Initialize FastMCP server
-mcp = FastMCP("Gmail")
-
 # Module-level service cache
 _cached_service = None
+
+# Get the directory where this script is located
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 async def retry_with_backoff(func, max_retries=3):
     """
@@ -67,9 +70,10 @@ def get_gmail_service():
     logger.info("Initializing new Gmail service")
     creds = None
     # The file token.json stores the user's access and refresh tokens
-    if os.path.exists("token.json"):
+    token_path = os.path.join(SCRIPT_DIR, "token.json")
+    if os.path.exists(token_path):
         logger.debug("Loading credentials from token.json")
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
 
     # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
@@ -77,25 +81,25 @@ def get_gmail_service():
             logger.info("Refreshing expired access token")
             creds.refresh(Request())
         else:
-            if not os.path.exists("credentials.json"):
-                logger.error("credentials.json file not found")
+            credentials_path = os.path.join(SCRIPT_DIR, "credentials.json")
+            if not os.path.exists(credentials_path):
+                logger.error(f"credentials.json file not found at {credentials_path}")
                 raise FileNotFoundError("credentials.json not found. Please follow the setup guide to obtain it.")
 
             logger.info("Starting OAuth 2.0 authorization flow")
-            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file(credentials_path, SCOPES)
             creds = flow.run_local_server(port=0)
 
         # Save the credentials for the next run
         logger.debug("Saving credentials to token.json")
-        with open("token.json", "w") as token:
+        with open(token_path, "w") as token:
             token.write(creds.to_json())
 
     logger.info("Gmail service initialized successfully")
     _cached_service = build("gmail", "v1", credentials=creds)
     return _cached_service
 
-@mcp.tool()
-async def get_unread_emails(max_results: int = 10) -> List[Dict[str, Any]]:
+async def handle_get_unread_emails(max_results: int = 10) -> list[dict[str, Any]]:
     """
     Retrieve unread emails from the Gmail account.
 
@@ -195,8 +199,7 @@ async def get_unread_emails(max_results: int = 10) -> List[Dict[str, Any]]:
         logger.error(f"Unexpected error fetching unread emails: {e}", exc_info=True)
         return [{"error": f"Unexpected error: {str(e)}"}]
 
-@mcp.tool()
-async def create_draft_reply(thread_id: str, reply_body: str) -> Dict[str, Any]:
+async def handle_create_draft_reply(thread_id: str, reply_body: str) -> dict[str, Any]:
     """
     Create a draft reply to an existing email thread.
 
@@ -237,7 +240,7 @@ async def create_draft_reply(thread_id: str, reply_body: str) -> Dict[str, Any]:
         messages = thread.get('messages', [])
         if not messages:
             return {"error": "Thread not found or empty."}
-        
+
         last_message = messages[-1]
         payload = last_message.get('payload')
         if not payload:
@@ -273,10 +276,10 @@ async def create_draft_reply(thread_id: str, reply_body: str) -> Dict[str, Any]:
             message['References'] = message_id
         else:
             logger.warning(f"Thread {thread_id} has no Message-ID header, threading may be imperfect")
-        
+
         # Encode the message
         raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
-        
+
         draft_body = {
             'message': {
                 'threadId': thread_id,
@@ -320,5 +323,81 @@ async def create_draft_reply(thread_id: str, reply_body: str) -> Dict[str, Any]:
         logger.error(f"Unexpected error creating draft reply: {e}", exc_info=True)
         return {"error": f"Unexpected error: {str(e)}"}
 
+async def main():
+    """Main entry point for the MCP server."""
+    logger.info("Starting Gmail MCP server")
+
+    # Create server instance
+    server = Server("gmail")
+
+    # Register list_tools handler
+    @server.list_tools()
+    async def list_tools() -> list[Tool]:
+        return [
+            Tool(
+                name="get_unread_emails",
+                description="Retrieve unread emails from the Gmail account",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "max_results": {
+                            "type": "integer",
+                            "description": "Maximum number of unread emails to retrieve (default 10, max 500)",
+                            "default": 10
+                        }
+                    }
+                }
+            ),
+            Tool(
+                name="create_draft_reply",
+                description="Create a draft reply to an existing email thread",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "thread_id": {
+                            "type": "string",
+                            "description": "The ID of the thread to reply to"
+                        },
+                        "reply_body": {
+                            "type": "string",
+                            "description": "The content of the reply"
+                        }
+                    },
+                    "required": ["thread_id", "reply_body"]
+                }
+            )
+        ]
+
+    # Register call_tool handler
+    @server.call_tool()
+    async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+        """Handle tool calls from the MCP client."""
+        logger.info(f"Tool called: {name} with arguments: {arguments}")
+
+        if name == "get_unread_emails":
+            max_results = arguments.get("max_results", 10)
+            result = await handle_get_unread_emails(max_results)
+            import json
+            return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+        elif name == "create_draft_reply":
+            thread_id = arguments.get("thread_id", "")
+            reply_body = arguments.get("reply_body", "")
+            result = await handle_create_draft_reply(thread_id, reply_body)
+            import json
+            return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+        else:
+            raise ValueError(f"Unknown tool: {name}")
+
+    # Run the server
+    logger.info("Server initialized, starting stdio transport")
+    async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
+        await server.run(
+            read_stream,
+            write_stream,
+            server.create_initialization_options()
+        )
+
 if __name__ == "__main__":
-    mcp.run(transport="stdio")
+    asyncio.run(main())
