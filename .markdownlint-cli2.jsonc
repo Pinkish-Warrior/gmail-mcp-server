@@ -1,0 +1,6 @@
+{
+  "config": {
+    "MD013": false,  // Disable the line length limit
+    "MD036": false   // Allow bold text as headings if you prefer that style
+  }
+}
