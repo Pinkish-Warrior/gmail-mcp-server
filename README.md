@@ -24,6 +24,7 @@ To run this server, you will need:
 ```bash
 git clone <YOUR_REPO_URL>
 cd gmail-mcp-server
+python --version  # Should be 3.10+
 pip install -r requirements.txt
 ```
 
@@ -37,6 +38,11 @@ pip install -r requirements.txt
 6.  Give it a name (e.g., "Gmail MCP Server").
 7.  Click **Create** and then **Download JSON**.
 8.  Rename the downloaded file to `credentials.json` and place it in the root directory of this project (`gmail-mcp-server/`).
+9.  Verify the credentials file:
+    ```bash
+    ls -la credentials.json
+    # Should show the file with your OAuth credentials
+    ```
 
 ### 3. Run the Server and Authorize Access
 
@@ -44,6 +50,10 @@ The first time you run the server, it will initiate the OAuth 2.0 flow to author
 
 ```bash
 python gmail_server.py
+# Expected output:
+# INFO - gmail-mcp-server - Initializing new Gmail service
+# [Browser opens for authorization]
+# INFO - gmail-mcp-server - Gmail service initialized successfully
 ```
 
 1.  A browser window will open, prompting you to log in to your Google Account and grant the necessary permissions (`gmail.readonly` and `gmail.compose`).
@@ -68,7 +78,14 @@ python gmail_server.py
 }
 ```
 
-4.  Restart Claude Desktop. The AI assistant will now have access to the `Gmail` server and its tools.
+4.  Validate the JSON syntax:
+    ```bash
+    # macOS/Linux
+    cat ~/Library/Application\ Support/Claude/claude_desktop_config.json | python -m json.tool
+    # Should output formatted JSON without errors
+    ```
+
+5.  Restart Claude Desktop. The AI assistant will now have access to the `Gmail` server and its tools.
 
 ## Example Usage with Claude Desktop
 
@@ -78,6 +95,96 @@ Once configured, you can use prompts like the following:
 | :--- | :--- |
 | "Do I have any unread emails? If so, list the sender and subject of the first three." | Calls `get_unread_emails` and summarizes the results. |
 | "Draft a reply to the email from [Sender Name] with the subject [Subject] saying 'Thank you for your message. I will get back to you by the end of the day.'" | Calls `get_unread_emails` to find the thread ID, then calls `create_draft_reply` with the ID and the specified body. |
+
+## Verifying Your Setup
+
+### 1. Test Server Standalone
+Before connecting to Claude Desktop, verify the server works:
+
+```bash
+python gmail_server.py
+```
+
+You should see:
+- OAuth browser window opens (first run only)
+- No error messages
+- Server runs without crashing
+
+Press Ctrl+C to stop.
+
+### 2. Test with Claude Desktop
+
+After configuring Claude Desktop (see step 4 above):
+
+1. Restart Claude Desktop
+2. Open a new conversation
+3. Look for the 🔌 MCP icon indicating connected servers
+4. Try these test prompts:
+   - "Do I have any unread emails?"
+   - "What is the subject of my first unread email?"
+   - "Draft a reply to [sender name] saying thank you"
+
+### 3. Check Logs
+
+If issues occur, check logs:
+- **Server logs**: Run server manually to see output
+- **Claude Desktop logs**:
+  - macOS: `~/Library/Logs/Claude/mcp*.log`
+  - Windows: `%APPDATA%\Claude\Logs\mcp*.log`
+
+## Troubleshooting
+
+### Common Issues
+
+**"credentials.json not found"**
+- Ensure you've downloaded OAuth credentials from Google Cloud Console
+- Rename the file to exactly `credentials.json` (not `credentials (1).json`)
+- Place it in the project root directory
+
+**"Invalid grant" or "Token has been expired or revoked"**
+- Delete `token.json` and run the server again to re-authorize
+- Check that your OAuth consent screen is properly configured
+
+**"Error 403: Access denied"**
+- Ensure Gmail API is enabled in Google Cloud Console
+- Verify OAuth consent screen includes your Gmail account as a test user
+
+**"Rate limit exceeded"**
+- Gmail API has quotas (250 quota units/user/second)
+- Wait a few minutes and try again
+- Consider reducing `max_results` parameter
+
+**Server not appearing in Claude Desktop**
+- Check `claude_desktop_config.json` syntax (valid JSON)
+- Verify absolute path to `gmail_server.py` is correct
+- Restart Claude Desktop after config changes
+- Check Claude Desktop logs: `~/Library/Logs/Claude/mcp*.log` (macOS)
+
+## Frequently Asked Questions
+
+**Q: Can I use this with a Google Workspace (G Suite) account?**
+A: Yes, but you may need domain admin approval to enable the Gmail API.
+
+**Q: Is my email data secure?**
+A: Yes. All authentication uses OAuth 2.0, credentials stored locally, and data never leaves your machine. The AI assistant only accesses emails when you explicitly ask it to.
+
+**Q: Can the AI send emails automatically?**
+A: No. This server only creates **drafts**, not sent emails. You must manually review and send drafts from Gmail.
+
+**Q: What Gmail scopes are required?**
+A: `gmail.readonly` (read emails) and `gmail.compose` (create drafts). These are minimal permissions.
+
+**Q: How do I revoke access?**
+A: Delete `token.json` and go to https://myaccount.google.com/permissions to revoke app access.
+
+**Q: Can I use multiple Gmail accounts?**
+A: Not simultaneously. To switch accounts, delete `token.json` and re-authorize.
+
+**Q: Does this work with other email providers?**
+A: No, only Gmail. Other providers would require different API integrations.
+
+**Q: What are the Gmail API rate limits?**
+A: 250 quota units per user per second, 1 billion per day. Each read/list operation costs 5 units. Typical usage won't hit limits.
 
 ## Stretch Goal: Enhancing Replies with External Context
 
