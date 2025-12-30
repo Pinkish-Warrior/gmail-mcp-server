@@ -5,6 +5,7 @@
 **Date**: 2025-12-30
 **Issue**: MCP server times out during initialization (60 second timeout)
 **Changes Made**:
+
 - Created Python 3.12 virtual environment (`venv/`)
 - Downgraded MCP from 1.25.0 → 1.10.0
 - Reinstalled Google API packages
@@ -104,12 +105,14 @@ python3 -m json.tool ~/Library/Application\ Support/Claude/claude_desktop_config
 
 **Issue**: "credentials.json not found"
 **Fix**:
+
 ```bash
 ls -la /Users/taniasantana/Documents/HUB/gmail-mcp-server/credentials.json
 ```
 
 **Issue**: "Module not found"
 **Fix**:
+
 ```bash
 cd /Users/taniasantana/Documents/HUB/gmail-mcp-server
 venv/bin/pip install -r requirements.txt
