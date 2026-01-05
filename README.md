@@ -98,6 +98,36 @@ Once configured, you can use prompts like the following:
 | "Do I have any unread emails? If so, list the sender and subject of the first three." | Calls `get_unread_emails` and summarizes the results. |
 | "Draft a reply to the email from [Sender Name] with the subject [Subject] saying 'Thank you for your message. I will get back to you by the end of the day.'" | Calls `get_unread_emails` to find the thread ID, then calls `create_draft_reply` with the ID and the specified body. |
 
+## Demo Screenshots
+
+### 1. Claude Desktop Configuration
+
+![Claude Desktop Configuration](screenshots/claude_config.png)
+
+The MCP server configured in Claude Desktop's settings.
+
+### 2. Getting Unread Emails
+
+![Getting Unread Emails](screenshots/get_unread_emails.png)
+
+Claude Desktop retrieving unread emails using the `get_unread_emails` tool.
+
+### 3. Creating a Draft Reply
+
+![Create Draft Prompt](screenshots/create_draft_prompt.png)
+
+User requesting Claude to create a draft reply to an email.
+
+![Draft Created](screenshots/draft_created.png)
+
+Claude successfully creating a draft reply using the `create_draft_reply` tool.
+
+### 4. Gmail Draft Folder
+
+![Gmail Draft Folder](screenshots/gmail_draft_folder.png)
+
+The created draft reply appearing in Gmail's draft folder.
+
 ## Verifying Your Setup
 
 ### 1. Test Server Standalone
