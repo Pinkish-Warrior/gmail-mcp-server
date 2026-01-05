@@ -5,3 +5,8 @@ __pycache__/
 .env
 venv/
 .venv/
+*.log
+
+# Internal documentation (not for public repo)
+docs/CURRENT_STATUS.md
+docs/step-by-step.md
