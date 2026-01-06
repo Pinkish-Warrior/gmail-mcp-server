@@ -10,3 +10,4 @@ venv/
 # Internal documentation (not for public repo)
 docs/CURRENT_STATUS.md
 docs/step-by-step.md
+docs/INTERVIEW.md
