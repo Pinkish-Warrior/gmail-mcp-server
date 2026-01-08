@@ -33,6 +33,7 @@ Build and deploy an MCP server that allows an AI assistant to read unread emails
 ### 1. MCP Server Implementation
 
 Choose one of the following:
+
 - **Python** with `mcp` SDK (recommended)
 - **TypeScript** with `@modelcontextprotocol/sdk`
 
@@ -43,12 +44,14 @@ Choose one of the following:
 **Purpose:** Retrieve unread emails from the Gmail account
 
 **Returns:**
+
 - Sender information
 - Subject line
 - Body/snippet preview
 - Email/thread ID (for replying)
 
 **Parameters:**
+
 - `max_results` (optional): Maximum number of emails to retrieve
 
 #### Tool 2: `create_draft_reply`
@@ -56,10 +59,12 @@ Choose one of the following:
 **Purpose:** Create a draft reply within an existing email thread
 
 **Accepts:**
+
 - Original email/thread ID
 - Reply body text
 
 **Requirements:**
+
 - Must create a correctly threaded draft reply
 - Should set proper email headers (`In-Reply-To`, `References`)
 - Should maintain thread context in Gmail
@@ -67,11 +72,13 @@ Choose one of the following:
 ### 3. Working Demo with Claude Desktop
 
 **Configuration:**
+
 - Configure Claude Desktop to connect to your server locally
 - Document the `claude_desktop_config.json` configuration
 - Ensure server appears in Claude Desktop's MCP server list
 
 **Demo Requirements:**
+
 - Include example prompts showing:
   - Claude reading unread emails
   - Claude creating draft replies
@@ -84,6 +91,7 @@ Choose one of the following:
 ### 4. GitHub Repository
 
 **Required Documentation:**
+
 - README.md covering:
   - What the server does
   - Prerequisites
@@ -96,6 +104,7 @@ Choose one of the following:
 - Screenshots of working implementation
 
 **Required Files:**
+
 - Source code (`.py` or `.ts`)
 - Dependencies file (`requirements.txt` or `package.json`)
 - Configuration examples
@@ -110,18 +119,21 @@ Submit your GitHub repository link via the project submission form.
 Enhance your server by pulling in external context to help the AI write better replies.
 
 **Examples:**
+
 - Email style guide from Google Docs
 - Reply templates from Notion
 - Files from a local knowledge base
 - Company-specific writing guidelines
 
 **Implementation Ideas:**
+
 - Add a tool to fetch style guides
 - Integrate with external APIs (Google Docs, Notion)
 - Use MCP Resources to expose style guides
 - Read local markdown files with templates
 
 **Benefits:**
+
 - Demonstrates advanced MCP features
 - Shows integration capabilities
 - Provides more contextual, styled responses
